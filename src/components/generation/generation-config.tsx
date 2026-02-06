@@ -12,6 +12,7 @@ import {
 import { useAppStore } from "@/stores/app-store";
 import { ALL_PRESETS } from "@/lib/constants";
 import type { PromptItem } from "@/types/gemini";
+import { useShallow } from "zustand/react/shallow";
 
 interface GenerationConfigProps {
   customPrompt: string;
@@ -27,7 +28,13 @@ export function GenerationConfig({
   onSelectedPromptsChange,
 }: GenerationConfigProps) {
   const { activePresetId, setActivePresetId, setCurrentPrompts } =
-    useAppStore();
+    useAppStore(
+      useShallow((state) => ({
+        activePresetId: state.activePresetId,
+        setActivePresetId: state.setActivePresetId,
+        setCurrentPrompts: state.setCurrentPrompts,
+      }))
+    );
 
   const handlePresetChange = (presetId: string) => {
     setActivePresetId(presetId);

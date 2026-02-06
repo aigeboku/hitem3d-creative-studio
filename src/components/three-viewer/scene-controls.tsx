@@ -1,6 +1,5 @@
 "use client";
 
-import { useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { Button } from "@/components/ui/button";
 import { CAMERA_PRESETS } from "@/lib/constants";
@@ -35,18 +34,4 @@ export function SceneOrbitControls() {
       makeDefault
     />
   );
-}
-
-// Hook to animate camera to a preset position
-export function useCameraAnimation() {
-  const { camera } = useThree();
-
-  const animateToPosition = (position: [number, number, number]) => {
-    const [x, y, z] = position;
-    camera.position.set(x, y, z);
-    camera.lookAt(0, 0, 0);
-    camera.updateProjectionMatrix();
-  };
-
-  return { animateToPosition };
 }

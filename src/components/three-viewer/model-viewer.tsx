@@ -10,27 +10,37 @@ import * as THREE from "three";
 interface ModelViewerProps {
   glbUrl: string;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  targetCameraPosition: [number, number, number] | null;
 }
 
-function CameraEventListener() {
+interface CameraTargetControllerProps {
+  targetCameraPosition: [number, number, number] | null;
+}
+
+function CameraTargetController({
+  targetCameraPosition,
+}: CameraTargetControllerProps) {
   const { camera } = useThree();
 
   useEffect(() => {
-    const handleMoveCamera = (e: Event) => {
-      const { position } = (e as CustomEvent).detail;
-      camera.position.set(position[0], position[1], position[2]);
-      camera.lookAt(0, 0, 0);
-      camera.updateProjectionMatrix();
-    };
-
-    window.addEventListener("move-camera", handleMoveCamera);
-    return () => window.removeEventListener("move-camera", handleMoveCamera);
-  }, [camera]);
+    if (!targetCameraPosition) return;
+    camera.position.set(
+      targetCameraPosition[0],
+      targetCameraPosition[1],
+      targetCameraPosition[2]
+    );
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+  }, [camera, targetCameraPosition]);
 
   return null;
 }
 
-export function ModelViewer({ glbUrl, canvasRef }: ModelViewerProps) {
+export function ModelViewer({
+  glbUrl,
+  canvasRef,
+  targetCameraPosition,
+}: ModelViewerProps) {
   return (
     <div className="relative w-full aspect-video bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden border">
       <Canvas
@@ -56,7 +66,7 @@ export function ModelViewer({ glbUrl, canvasRef }: ModelViewerProps) {
           <GlbModel url={glbUrl} />
           <Environment preset="studio" />
           <SceneOrbitControls />
-          <CameraEventListener />
+          <CameraTargetController targetCameraPosition={targetCameraPosition} />
         </Suspense>
       </Canvas>
     </div>

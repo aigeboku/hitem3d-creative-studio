@@ -15,34 +15,35 @@ import { SceneControlsUI } from "@/components/three-viewer/scene-controls";
 import { ScreenshotButton } from "@/components/three-viewer/screenshot-button";
 import { ScreenshotGallery } from "@/components/three-viewer/screenshot-gallery";
 import { useAppStore } from "@/stores/app-store";
+import { useScreenshot } from "@/hooks/use-screenshot";
+import { useShallow } from "zustand/react/shallow";
 
 export function StepViewerScreenshot() {
-  const { glbUrl, screenshots, addScreenshot, setCurrentStep } = useAppStore();
+  const { glbUrl, screenshots, setCurrentStep } = useAppStore(
+    useShallow((state) => ({
+      glbUrl: state.glbUrl,
+      screenshots: state.screenshots,
+      setCurrentStep: state.setCurrentStep,
+    }))
+  );
+  const { captureScreenshot } = useScreenshot();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [screenshotLabel, setScreenshotLabel] = useState("Custom Angle");
   const [currentAngle, setCurrentAngle] = useState("Custom Angle");
+  const [targetCameraPosition, setTargetCameraPosition] = useState<
+    [number, number, number] | null
+  >(null);
 
   const handleCapture = useCallback(() => {
     if (!canvasRef.current) return;
-    const dataUrl = canvasRef.current.toDataURL("image/png");
-    addScreenshot({
-      id: crypto.randomUUID(),
-      dataUrl,
-      label: screenshotLabel || currentAngle,
-      timestamp: Date.now(),
-    });
-  }, [addScreenshot, screenshotLabel, currentAngle]);
+    captureScreenshot(canvasRef.current, screenshotLabel || currentAngle);
+  }, [captureScreenshot, screenshotLabel, currentAngle]);
 
   const handlePresetClick = useCallback(
     (position: [number, number, number], label: string) => {
       setCurrentAngle(label);
       setScreenshotLabel(label);
-      // We need to move the camera in the canvas
-      // Since we can't directly call into R3F from outside,
-      // we'll use a workaround via custom events
-      window.dispatchEvent(
-        new CustomEvent("move-camera", { detail: { position, label } })
-      );
+      setTargetCameraPosition([...position] as [number, number, number]);
     },
     []
   );
@@ -67,7 +68,11 @@ export function StepViewerScreenshot() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <ModelViewer glbUrl={glbUrl} canvasRef={canvasRef} />
+        <ModelViewer
+          glbUrl={glbUrl}
+          canvasRef={canvasRef}
+          targetCameraPosition={targetCameraPosition}
+        />
 
         <div className="space-y-3">
           <h4 className="text-sm font-medium">Preset Angles</h4>

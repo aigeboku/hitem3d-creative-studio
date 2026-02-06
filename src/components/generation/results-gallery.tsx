@@ -6,9 +6,10 @@ import { useAppStore } from "@/stores/app-store";
 import { GeneratedImageCard } from "./generated-image-card";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import { parseDataUrl } from "@/lib/data-url";
 
 export function ResultsGallery() {
-  const { generatedImages } = useAppStore();
+  const generatedImages = useAppStore((state) => state.generatedImages);
   const [downloading, setDownloading] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
@@ -22,10 +23,11 @@ export function ResultsGallery() {
       if (!folder) return;
 
       for (const image of generatedImages) {
-        // Convert data URL to base64
-        const base64 = image.dataUrl.split(",")[1];
+        const parsed = parseDataUrl(image.dataUrl);
+        if (!parsed) continue;
+
         const fileName = `${image.promptLabel.replace(/\s+/g, "_")}.png`;
-        folder.file(fileName, base64, { base64: true });
+        folder.file(fileName, parsed.base64, { base64: true });
       }
 
       const content = await zip.generateAsync({ type: "blob" });

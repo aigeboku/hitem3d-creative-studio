@@ -25,8 +25,8 @@ export default function SettingsPage() {
               Security Note
             </h3>
             <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-              API keys are stored in your browser&apos;s localStorage only.
-              This app is designed for local use only. Do not deploy to a public server.
+              Credentials are stored in secure HttpOnly cookies on this browser.
+              For production use, set `CREDENTIALS_COOKIE_SECRET` on the server.
             </p>
           </div>
         </div>

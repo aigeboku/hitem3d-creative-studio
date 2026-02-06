@@ -2,9 +2,15 @@
 
 import { useCallback, useRef } from "react";
 import { useAppStore } from "@/stores/app-store";
+import { useShallow } from "zustand/react/shallow";
 
 export function ImageDropzone() {
-  const { uploadedImage, setUploadedImage } = useAppStore();
+  const { uploadedImage, setUploadedImage } = useAppStore(
+    useShallow((state) => ({
+      uploadedImage: state.uploadedImage,
+      setUploadedImage: state.setUploadedImage,
+    }))
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processFile = useCallback(

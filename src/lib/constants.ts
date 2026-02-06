@@ -1,11 +1,7 @@
 import type { PromptPreset } from "@/types/gemini";
 
 // Hitem3D API
-export const HITEM3D_BASE_URL = "http://api.hitem3d.com";
 export const HITEM3D_POLLING_INTERVAL = 3000;
-
-// Gemini
-export const GEMINI_MODEL = "gemini-3-pro-image-preview";
 
 // Default camera angle prompts (ported from NanobananaPro)
 export const DEFAULT_PROMPTS: PromptPreset = {

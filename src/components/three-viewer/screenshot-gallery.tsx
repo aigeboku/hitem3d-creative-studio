@@ -1,9 +1,15 @@
 "use client";
 
 import { useAppStore } from "@/stores/app-store";
+import { useShallow } from "zustand/react/shallow";
 
 export function ScreenshotGallery() {
-  const { screenshots, removeScreenshot } = useAppStore();
+  const { screenshots, removeScreenshot } = useAppStore(
+    useShallow((state) => ({
+      screenshots: state.screenshots,
+      removeScreenshot: state.removeScreenshot,
+    }))
+  );
 
   if (screenshots.length === 0) {
     return (

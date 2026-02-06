@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/stores/app-store";
 
 export function Header() {
-  const { resetWorkflow } = useAppStore();
+  const resetWorkflow = useAppStore((state) => state.resetWorkflow);
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,6 +15,8 @@ import { ResultsGallery } from "@/components/generation/results-gallery";
 import { useAppStore } from "@/stores/app-store";
 import { useGemini } from "@/hooks/use-gemini";
 import type { PromptItem, ReferenceImage } from "@/types/gemini";
+import { parseDataUrl } from "@/lib/data-url";
+import { useShallow } from "zustand/react/shallow";
 
 export function StepImageGeneration() {
   const {
@@ -23,9 +25,26 @@ export function StepImageGeneration() {
     currentPrompts,
     clearGeneratedImages,
     setCurrentStep,
-  } = useAppStore();
+  } = useAppStore(
+    useShallow((state) => ({
+      uploadedImage: state.uploadedImage,
+      screenshots: state.screenshots,
+      currentPrompts: state.currentPrompts,
+      clearGeneratedImages: state.clearGeneratedImages,
+      setCurrentStep: state.setCurrentStep,
+    }))
+  );
 
   const { generateImage } = useGemini();
+  const generationAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      generationAbortRef.current?.abort();
+    };
+  }, []);
 
   const [selectedPrompts, setSelectedPrompts] = useState<PromptItem[]>(
     currentPrompts.slice(0, 4)
@@ -51,41 +70,75 @@ export function StepImageGeneration() {
     const referenceImages: ReferenceImage[] = [];
 
     if (uploadedImage) {
-      const base64 = uploadedImage.split(",")[1];
-      const mimeType = uploadedImage.split(";")[0].split(":")[1];
+      const parsed = parseDataUrl(uploadedImage);
+      if (!parsed) {
+        setGenerating(false);
+        setErrors(["Invalid uploaded image data. Please upload the image again."]);
+        return;
+      }
+
       referenceImages.push({
-        base64,
-        mimeType,
+        base64: parsed.base64,
+        mimeType: parsed.mimeType,
         label: "Original image",
       });
     }
 
     for (const ss of screenshots) {
-      const base64 = ss.dataUrl.split(",")[1];
+      const parsed = parseDataUrl(ss.dataUrl);
+      if (!parsed) {
+        setGenerating(false);
+        setErrors([`Invalid screenshot data: ${ss.label}`]);
+        return;
+      }
+
       referenceImages.push({
-        base64,
-        mimeType: "image/png",
+        base64: parsed.base64,
+        mimeType: parsed.mimeType,
         label: ss.label,
       });
     }
 
     // Generate images sequentially to avoid rate limits
     for (const promptItem of selectedPrompts) {
+      if (!mountedRef.current) {
+        break;
+      }
+
       const fullPrompt = customPrompt
         ? `${promptItem.prompt} ${customPrompt}`
         : promptItem.prompt;
 
       try {
-        await generateImage(fullPrompt, promptItem.label, referenceImages);
+        const controller = new AbortController();
+        generationAbortRef.current = controller;
+
+        await generateImage(fullPrompt, promptItem.label, referenceImages, {
+          signal: controller.signal,
+        });
       } catch (err) {
+        if (
+          (err instanceof DOMException && err.name === "AbortError") ||
+          (err instanceof Error && err.name === "AbortError")
+        ) {
+          break;
+        }
+
         const msg = err instanceof Error ? err.message : "Generation failed";
-        setErrors((prev) => [...prev, `${promptItem.label}: ${msg}`]);
+        if (mountedRef.current) {
+          setErrors((prev) => [...prev, `${promptItem.label}: ${msg}`]);
+        }
       }
 
-      setCompletedCount((prev) => prev + 1);
+      if (mountedRef.current) {
+        setCompletedCount((prev) => prev + 1);
+      }
     }
 
-    setGenerating(false);
+    generationAbortRef.current = null;
+    if (mountedRef.current) {
+      setGenerating(false);
+    }
   }, [
     selectedPrompts,
     customPrompt,

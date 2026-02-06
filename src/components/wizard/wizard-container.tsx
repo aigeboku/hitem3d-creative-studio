@@ -8,7 +8,7 @@ import { StepViewerScreenshot } from "./step-viewer-screenshot";
 import { StepImageGeneration } from "./step-image-generation";
 
 export function WizardContainer() {
-  const { currentStep } = useAppStore();
+  const currentStep = useAppStore((state) => state.currentStep);
 
   return (
     <div className="w-full max-w-4xl mx-auto">

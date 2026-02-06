@@ -14,9 +14,3 @@ export interface GeneratedImage {
   prompt: string;
   timestamp: number;
 }
-
-export interface ApiKeys {
-  hitem3dUsername: string;
-  hitem3dPassword: string;
-  geminiApiKey: string;
-}

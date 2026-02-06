@@ -1,118 +1,153 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { type MutableRefObject, useCallback, useRef } from "react";
 import { useAppStore } from "@/stores/app-store";
 import { HITEM3D_POLLING_INTERVAL } from "@/lib/constants";
+import { useShallow } from "zustand/react/shallow";
+import type {
+  Hitem3DQueryTaskApiResponse,
+  Hitem3DSubmitTaskApiResponse,
+} from "@/types/hitem3d";
+
+const REQUEST_TIMEOUT_MS = 20_000;
+const POLLING_MAX_ATTEMPTS = 120;
+const POLLING_MAX_DURATION_MS = 10 * 60_000;
 
 export function useHitem3d() {
-  const {
-    hitem3dUsername,
-    hitem3dPassword,
-    setTaskId,
-    setTaskStatus,
-    setTaskProgress,
-    setGlbUrl,
-  } = useAppStore();
+  const { setTaskId, setTaskStatus, setTaskProgress, setGlbUrl } = useAppStore(
+    useShallow((state) => ({
+      setTaskId: state.setTaskId,
+      setTaskStatus: state.setTaskStatus,
+      setTaskProgress: state.setTaskProgress,
+      setGlbUrl: state.setGlbUrl,
+    }))
+  );
 
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
-  const tokenRef = useRef<string | null>(null);
+  const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const activeRequestRef = useRef<AbortController | null>(null);
+  const cancelledRef = useRef(false);
 
   const stopPolling = useCallback(() => {
-    if (pollingRef.current) {
-      clearTimeout(pollingRef.current);
-      pollingRef.current = null;
+    cancelledRef.current = true;
+
+    if (pollingTimerRef.current) {
+      clearTimeout(pollingTimerRef.current);
+      pollingTimerRef.current = null;
+    }
+
+    if (activeRequestRef.current) {
+      activeRequestRef.current.abort();
+      activeRequestRef.current = null;
     }
   }, []);
 
-  const authenticate = useCallback(async (): Promise<string> => {
-    const res = await fetch("/api/hitem3d/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: hitem3dUsername,
-        password: hitem3dPassword,
-      }),
-    });
-
-    const data = await res.json();
-    if (!res.ok || data.code !== 0) {
-      throw new Error(data.message || "Authentication failed");
-    }
-
-    tokenRef.current = data.data.token;
-    return data.data.token;
-  }, [hitem3dUsername, hitem3dPassword]);
-
   const submitTask = useCallback(
     async (file: File): Promise<string> => {
-      const token = tokenRef.current || (await authenticate());
-
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("generate_type", "glb");
 
-      const res = await fetch("/api/hitem3d/submit-task", {
-        method: "POST",
-        headers: { "X-Hitem3D-Token": token },
-        body: formData,
-      });
+      const data = await fetchJsonWithTimeout<Hitem3DSubmitTaskApiResponse>(
+        "/api/hitem3d/submit-task",
+        {
+          method: "POST",
+          body: formData,
+        },
+        REQUEST_TIMEOUT_MS,
+        activeRequestRef
+      );
 
-      const data = await res.json();
-      if (!res.ok || data.code !== 0) {
-        throw new Error(data.message || "Failed to submit task");
+      if (!data || typeof data.taskId !== "string") {
+        throw new Error("Failed to submit task.");
       }
 
-      const taskId = data.data.task_id;
-      setTaskId(taskId);
+      setTaskId(data.taskId);
       setTaskStatus("waiting");
       setTaskProgress(0);
-      return taskId;
+      return data.taskId;
     },
-    [authenticate, setTaskId, setTaskStatus, setTaskProgress]
+    [setTaskId, setTaskStatus, setTaskProgress]
   );
 
   const pollTask = useCallback(
     (taskId: string): Promise<string> => {
+      cancelledRef.current = false;
+
       return new Promise((resolve, reject) => {
+        const startedAt = Date.now();
+        let attempts = 0;
+
         const poll = async () => {
+          if (cancelledRef.current) {
+            reject(new Error("Generation was cancelled."));
+            return;
+          }
+
+          attempts += 1;
+          if (attempts > POLLING_MAX_ATTEMPTS) {
+            reject(new Error("Timed out while waiting for 3D generation."));
+            return;
+          }
+
+          if (Date.now() - startedAt > POLLING_MAX_DURATION_MS) {
+            reject(new Error("Timed out while waiting for 3D generation."));
+            return;
+          }
+
           try {
-            const token = tokenRef.current;
-            if (!token) {
-              reject(new Error("No auth token"));
+            const data = await fetchJsonWithTimeout<Hitem3DQueryTaskApiResponse>(
+              `/api/hitem3d/query-task?task_id=${encodeURIComponent(taskId)}`,
+              { method: "GET" },
+              REQUEST_TIMEOUT_MS,
+              activeRequestRef
+            );
+
+            if (!data || typeof data.status !== "string") {
+              throw new Error("Invalid task status response.");
+            }
+
+            setTaskStatus(data.status);
+            setTaskProgress(typeof data.progress === "number" ? data.progress : 0);
+
+            if (data.status === "success" && data.outputUrl) {
+              setGlbUrl(data.outputUrl);
+              stopPolling();
+              resolve(data.outputUrl);
               return;
             }
 
-            const res = await fetch(
-              `/api/hitem3d/query-task?task_id=${encodeURIComponent(taskId)}`,
-              { headers: { "X-Hitem3D-Token": token } }
+            if (data.status === "failed") {
+              stopPolling();
+              reject(new Error(data.errorMessage || "3D generation failed."));
+              return;
+            }
+
+            const nextDelay = Math.min(
+              HITEM3D_POLLING_INTERVAL + attempts * 250,
+              8_000
             );
-
-            const data = await res.json();
-            if (!res.ok || data.code !== 0) {
-              throw new Error(data.message || "Failed to query task");
-            }
-
-            const { status, progress, output_url, error_message } = data.data;
-            setTaskStatus(status);
-            setTaskProgress(progress || 0);
-
-            if (status === "success" && output_url) {
-              setGlbUrl(output_url);
-              stopPolling();
-              resolve(output_url);
-            } else if (status === "failed") {
-              stopPolling();
-              reject(new Error(error_message || "Task failed"));
-            } else {
-              pollingRef.current = setTimeout(poll, HITEM3D_POLLING_INTERVAL);
-            }
+            pollingTimerRef.current = setTimeout(() => {
+              void poll();
+            }, nextDelay);
           } catch (error) {
+            if (cancelledRef.current) {
+              reject(new Error("Generation was cancelled."));
+              return;
+            }
+
+            const message = error instanceof Error ? error.message : "";
+            if (message.includes("Timed out") && attempts < POLLING_MAX_ATTEMPTS) {
+              pollingTimerRef.current = setTimeout(() => {
+                void poll();
+              }, HITEM3D_POLLING_INTERVAL);
+              return;
+            }
+
             stopPolling();
             reject(error);
           }
         };
 
-        poll();
+        void poll();
       });
     },
     [setTaskStatus, setTaskProgress, setGlbUrl, stopPolling]
@@ -120,16 +155,65 @@ export function useHitem3d() {
 
   const generate3DModel = useCallback(
     async (file: File): Promise<string> => {
-      await authenticate();
+      cancelledRef.current = false;
       const taskId = await submitTask(file);
-      const outputUrl = await pollTask(taskId);
-      return outputUrl;
+      return pollTask(taskId);
     },
-    [authenticate, submitTask, pollTask]
+    [submitTask, pollTask]
   );
 
   return {
     generate3DModel,
     stopPolling,
   };
+}
+
+async function fetchJsonWithTimeout<T>(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+  activeRequestRef: MutableRefObject<AbortController | null>
+): Promise<T> {
+  const controller = new AbortController();
+  activeRequestRef.current = controller;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+    const payload = (await response.json().catch(() => null)) as
+      | T
+      | { error?: string }
+      | null;
+
+    if (!response.ok) {
+      const messageRaw =
+        payload && typeof payload === "object" && "error" in payload
+          ? payload.error
+          : undefined;
+      const message = typeof messageRaw === "string" ? messageRaw : undefined;
+      throw new Error(message || "Request failed.");
+    }
+
+    if (!payload) {
+      throw new Error("Empty response.");
+    }
+
+    return payload as T;
+  } catch (error) {
+    if (
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof Error && error.name === "AbortError")
+    ) {
+      throw new Error("Timed out while contacting the server.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+    if (activeRequestRef.current === controller) {
+      activeRequestRef.current = null;
+    }
+  }
 }

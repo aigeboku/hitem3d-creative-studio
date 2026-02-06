@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,6 +12,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { useAppStore } from "@/stores/app-store";
 import { useHitem3d } from "@/hooks/use-hitem3d";
+import { useShallow } from "zustand/react/shallow";
 
 export function StepGenerate3D() {
   const {
@@ -21,11 +22,26 @@ export function StepGenerate3D() {
     taskProgress,
     glbUrl,
     setCurrentStep,
-  } = useAppStore();
+  } = useAppStore(
+    useShallow((state) => ({
+      uploadedImage: state.uploadedImage,
+      uploadedImageFile: state.uploadedImageFile,
+      taskStatus: state.taskStatus,
+      taskProgress: state.taskProgress,
+      glbUrl: state.glbUrl,
+      setCurrentStep: state.setCurrentStep,
+    }))
+  );
 
   const { generate3DModel, stopPolling } = useHitem3d();
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, [stopPolling]);
 
   const handleGenerate = async () => {
     if (!uploadedImageFile) return;

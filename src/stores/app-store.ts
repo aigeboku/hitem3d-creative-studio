@@ -6,13 +6,6 @@ import type { Hitem3DTaskStatus } from "@/types/hitem3d";
 import { DEFAULT_PROMPTS } from "@/lib/constants";
 
 interface AppState {
-  // API Keys (persisted)
-  hitem3dUsername: string;
-  hitem3dPassword: string;
-  geminiApiKey: string;
-  setHitem3dCredentials: (username: string, password: string) => void;
-  setGeminiApiKey: (key: string) => void;
-
   // Wizard
   currentStep: WizardStep;
   setCurrentStep: (step: WizardStep) => void;
@@ -54,14 +47,6 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      // API Keys
-      hitem3dUsername: "",
-      hitem3dPassword: "",
-      geminiApiKey: "",
-      setHitem3dCredentials: (username, password) =>
-        set({ hitem3dUsername: username, hitem3dPassword: password }),
-      setGeminiApiKey: (key) => set({ geminiApiKey: key }),
-
       // Wizard
       currentStep: 1,
       setCurrentStep: (step) => set({ currentStep: step }),
@@ -120,13 +105,59 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "hitem3d-creative-studio",
+      version: 2,
       partialize: (state) => ({
-        hitem3dUsername: state.hitem3dUsername,
-        hitem3dPassword: state.hitem3dPassword,
-        geminiApiKey: state.geminiApiKey,
         activePresetId: state.activePresetId,
         currentPrompts: state.currentPrompts,
       }),
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<{
+          activePresetId: string;
+          currentPrompts: PromptItem[];
+        }>;
+
+        return {
+          activePresetId:
+            typeof state?.activePresetId === "string"
+              ? state.activePresetId
+              : DEFAULT_PROMPTS.id,
+          currentPrompts:
+            Array.isArray(state?.currentPrompts) &&
+            state.currentPrompts.length > 0
+              ? state.currentPrompts
+              : DEFAULT_PROMPTS.prompts,
+        };
+      },
+      onRehydrateStorage: () => () => {
+        if (typeof window === "undefined") return;
+
+        const raw = window.localStorage.getItem("hitem3d-creative-studio");
+        if (!raw) return;
+
+        try {
+          const parsed = JSON.parse(raw) as {
+            state?: Record<string, unknown>;
+          };
+          if (!parsed.state) return;
+
+          const hasLegacySecrets =
+            "hitem3dUsername" in parsed.state ||
+            "hitem3dPassword" in parsed.state ||
+            "geminiApiKey" in parsed.state;
+
+          if (!hasLegacySecrets) return;
+
+          delete parsed.state.hitem3dUsername;
+          delete parsed.state.hitem3dPassword;
+          delete parsed.state.geminiApiKey;
+          window.localStorage.setItem(
+            "hitem3d-creative-studio",
+            JSON.stringify(parsed)
+          );
+        } catch {
+          // Ignore malformed storage entries.
+        }
+      },
     }
   )
 );

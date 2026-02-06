@@ -5,7 +5,7 @@ import { useAppStore } from "@/stores/app-store";
 import type { Screenshot } from "@/types/app";
 
 export function useScreenshot() {
-  const { addScreenshot } = useAppStore();
+  const addScreenshot = useAppStore((state) => state.addScreenshot);
 
   const captureScreenshot = useCallback(
     (canvas: HTMLCanvasElement, label: string) => {
