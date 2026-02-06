@@ -3,12 +3,15 @@
 import { OrbitControls } from "@react-three/drei";
 import { Button } from "@/components/ui/button";
 import { CAMERA_PRESETS } from "@/lib/constants";
+import { useI18n } from "@/hooks/use-i18n";
 
 interface SceneControlsProps {
   onPresetClick: (position: [number, number, number], label: string) => void;
 }
 
 export function SceneControlsUI({ onPresetClick }: SceneControlsProps) {
+  const { t } = useI18n();
+
   return (
     <div className="flex flex-wrap gap-2">
       {CAMERA_PRESETS.map((preset) => (
@@ -16,9 +19,9 @@ export function SceneControlsUI({ onPresetClick }: SceneControlsProps) {
           key={preset.label}
           variant="outline"
           size="sm"
-          onClick={() => onPresetClick(preset.position, preset.label)}
+          onClick={() => onPresetClick(preset.position, t(preset.label))}
         >
-          {preset.icon} {preset.label}
+          {preset.icon} {t(preset.label)}
         </Button>
       ))}
     </div>

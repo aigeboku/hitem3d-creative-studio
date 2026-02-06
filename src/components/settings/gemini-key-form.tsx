@@ -12,9 +12,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useCredentialsStatus } from "@/hooks/use-credentials-status";
+import { useI18n } from "@/hooks/use-i18n";
 
 export function GeminiKeyForm() {
   const { status, refresh } = useCredentialsStatus();
+  const { t } = useI18n();
   const [key, setKey] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -39,14 +41,14 @@ export function GeminiKeyForm() {
         | null;
 
       if (!response.ok || !payload?.valid) {
-        throw new Error(payload?.error || "Validation failed.");
+        throw new Error(payload?.error || t("Validation failed."));
       }
 
       setResult("valid");
       await refresh();
     } catch (err) {
       setResult("invalid");
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(err instanceof Error ? err.message : t("Unknown error"));
     } finally {
       setValidating(false);
     }
@@ -62,13 +64,13 @@ export function GeminiKeyForm() {
         method: "DELETE",
       });
       if (!response.ok) {
-        throw new Error("Failed to clear stored API key.");
+        throw new Error(t("Failed to clear stored API key."));
       }
       setKey("");
       await refresh();
     } catch (err) {
       setResult("invalid");
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(err instanceof Error ? err.message : t("Unknown error"));
     } finally {
       setClearing(false);
     }
@@ -77,22 +79,22 @@ export function GeminiKeyForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Gemini API</CardTitle>
+        <CardTitle>{t("Gemini API")}</CardTitle>
         <CardDescription>
-          Enter your Google AI API key and validate it securely.{" "}
+          {t("Enter your Google AI API key and validate it securely.")}{" "}
           <a
             href="https://aistudio.google.com/app/apikey"
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-500 underline"
           >
-            Get API key
+            {t("Get API key")}
           </a>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="gemini-key">API Key</Label>
+          <Label htmlFor="gemini-key">{t("API Key")}</Label>
           <div className="flex gap-2">
             <Input
               id="gemini-key"
@@ -108,7 +110,7 @@ export function GeminiKeyForm() {
               onClick={() => setShowKey((prev) => !prev)}
               className="shrink-0"
             >
-              {showKey ? "Hide" : "Show"}
+              {showKey ? t("Hide") : t("Show")}
             </Button>
           </div>
         </div>
@@ -118,28 +120,28 @@ export function GeminiKeyForm() {
             onClick={handleValidate}
             disabled={!key || validating || clearing}
           >
-            {validating ? "Validating..." : "Validate & Save Key"}
+            {validating ? t("Validating...") : t("Validate & Save Key")}
           </Button>
           <Button
             variant="destructive"
             onClick={handleClear}
             disabled={clearing || validating}
           >
-            {clearing ? "Clearing..." : "Clear Stored Key"}
+            {clearing ? t("Clearing...") : t("Clear Stored Key")}
           </Button>
         </div>
 
         {status.hasGeminiApiKey && (
           <p className="text-sm text-muted-foreground">
-            Gemini API key is currently stored for this browser.
+            {t("Gemini API key is currently stored for this browser.")}
           </p>
         )}
 
         {result === "valid" && (
-          <p className="text-sm text-green-600">API key is valid.</p>
+          <p className="text-sm text-green-600">{t("API key is valid.")}</p>
         )}
         {result === "invalid" && error && (
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm text-red-600">{t(error)}</p>
         )}
       </CardContent>
     </Card>

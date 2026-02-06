@@ -7,9 +7,11 @@ import { GeneratedImageCard } from "./generated-image-card";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { parseDataUrl } from "@/lib/data-url";
+import { useI18n } from "@/hooks/use-i18n";
 
 export function ResultsGallery() {
   const generatedImages = useAppStore((state) => state.generatedImages);
+  const { t } = useI18n();
   const [downloading, setDownloading] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
@@ -36,7 +38,7 @@ export function ResultsGallery() {
         `creative_studio_${new Date().toISOString().slice(0, 10)}.zip`
       );
     } catch (error) {
-      console.error("Download failed:", error);
+      console.error(`${t("Download failed:")}`, error);
     } finally {
       setDownloading(false);
     }
@@ -50,14 +52,14 @@ export function ResultsGallery() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">
-          Generated Images ({generatedImages.length})
+          {t("Generated Images")} ({generatedImages.length})
         </h3>
         <Button
           onClick={handleDownloadAll}
           disabled={downloading}
           variant="outline"
         >
-          {downloading ? "Compressing..." : "Download All (ZIP)"}
+          {downloading ? t("Compressing...") : t("Download All (ZIP)")}
         </Button>
       </div>
 
@@ -103,7 +105,7 @@ export function ResultsGallery() {
                   )
                 }
               >
-                Previous
+                {t("Previous")}
               </Button>
               <span className="text-white text-sm">
                 {previewIndex + 1} / {generatedImages.length}
@@ -117,7 +119,7 @@ export function ResultsGallery() {
                   )
                 }
               >
-                Next
+                {t("Next")}
               </Button>
             </div>
           </div>

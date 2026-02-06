@@ -13,6 +13,7 @@ import { useAppStore } from "@/stores/app-store";
 import { ALL_PRESETS } from "@/lib/constants";
 import type { PromptItem } from "@/types/gemini";
 import { useShallow } from "zustand/react/shallow";
+import { useI18n } from "@/hooks/use-i18n";
 
 interface GenerationConfigProps {
   customPrompt: string;
@@ -27,6 +28,7 @@ export function GenerationConfig({
   selectedPrompts,
   onSelectedPromptsChange,
 }: GenerationConfigProps) {
+  const { t } = useI18n();
   const { activePresetId, setActivePresetId, setCurrentPrompts } =
     useAppStore(
       useShallow((state) => ({
@@ -62,15 +64,15 @@ export function GenerationConfig({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <label className="text-sm font-medium">Preset</label>
+        <label className="text-sm font-medium">{t("Preset")}</label>
         <Select value={activePresetId} onValueChange={handlePresetChange}>
           <SelectTrigger>
-            <SelectValue placeholder="Select a preset" />
+            <SelectValue placeholder={t("Select a preset")} />
           </SelectTrigger>
           <SelectContent>
             {ALL_PRESETS.map((preset) => (
               <SelectItem key={preset.id} value={preset.id}>
-                {preset.name}
+                {t(preset.name)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -79,7 +81,7 @@ export function GenerationConfig({
 
       <div className="space-y-2">
         <label className="text-sm font-medium">
-          Select Prompts ({selectedPrompts.length} selected)
+          {t("Select Prompts")} ({selectedPrompts.length} {t("selected")})
         </label>
         <div className="grid grid-cols-2 gap-2">
           {availablePrompts.map((prompt) => {
@@ -93,7 +95,7 @@ export function GenerationConfig({
                 onClick={() => togglePrompt(prompt)}
               >
                 <span className="mr-2">{prompt.icon}</span>
-                {prompt.label}
+                {t(prompt.label)}
               </Button>
             );
           })}
@@ -102,12 +104,12 @@ export function GenerationConfig({
 
       <div className="space-y-2">
         <label className="text-sm font-medium">
-          Custom Prompt (optional - added to each generation)
+          {t("Custom Prompt (optional - added to each generation)")}
         </label>
         <Textarea
           value={customPrompt}
           onChange={(e) => onCustomPromptChange(e.target.value)}
-          placeholder="Add additional instructions..."
+          placeholder={t("Add additional instructions...")}
           rows={3}
         />
       </div>

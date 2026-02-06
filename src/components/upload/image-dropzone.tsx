@@ -3,6 +3,7 @@
 import { useCallback, useRef } from "react";
 import { useAppStore } from "@/stores/app-store";
 import { useShallow } from "zustand/react/shallow";
+import { useI18n } from "@/hooks/use-i18n";
 
 export function ImageDropzone() {
   const { uploadedImage, setUploadedImage } = useAppStore(
@@ -12,6 +13,7 @@ export function ImageDropzone() {
     }))
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { t } = useI18n();
 
   const processFile = useCallback(
     (file: File) => {
@@ -56,7 +58,7 @@ export function ImageDropzone() {
       <div className="relative">
         <img
           src={uploadedImage}
-          alt="Uploaded preview"
+          alt={t("Uploaded preview")}
           className="w-full max-h-80 object-contain rounded-lg border"
         />
         <button
@@ -78,9 +80,9 @@ export function ImageDropzone() {
     >
       <div className="space-y-3">
         <div className="text-4xl">📸</div>
-        <h3 className="text-lg font-medium">Upload an image</h3>
+        <h3 className="text-lg font-medium">{t("Upload an image")}</h3>
         <p className="text-sm text-muted-foreground">
-          Click or drag & drop an image
+          {t("Click or drag & drop an image")}
         </p>
       </div>
       <input

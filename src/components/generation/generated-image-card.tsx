@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import type { GeneratedImage } from "@/types/app";
+import { useI18n } from "@/hooks/use-i18n";
 
 interface GeneratedImageCardProps {
   image: GeneratedImage;
@@ -9,6 +10,8 @@ interface GeneratedImageCardProps {
 }
 
 export function GeneratedImageCard({ image, onClick }: GeneratedImageCardProps) {
+  const { t } = useI18n();
+
   const handleDownload = () => {
     const link = document.createElement("a");
     link.href = image.dataUrl;
@@ -31,7 +34,7 @@ export function GeneratedImageCard({ image, onClick }: GeneratedImageCardProps) 
       <div className="p-2 space-y-1">
         <p className="text-sm font-medium truncate">{image.promptLabel}</p>
         <Button variant="outline" size="sm" className="w-full" onClick={handleDownload}>
-          Download
+          {t("Download")}
         </Button>
       </div>
     </div>

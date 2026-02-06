@@ -2,6 +2,7 @@
 
 import { useAppStore } from "@/stores/app-store";
 import { useShallow } from "zustand/react/shallow";
+import { useI18n } from "@/hooks/use-i18n";
 
 export function ScreenshotGallery() {
   const { screenshots, removeScreenshot } = useAppStore(
@@ -10,11 +11,14 @@ export function ScreenshotGallery() {
       removeScreenshot: state.removeScreenshot,
     }))
   );
+  const { t } = useI18n();
 
   if (screenshots.length === 0) {
     return (
       <p className="text-sm text-muted-foreground text-center py-4">
-        No screenshots captured yet. Rotate the 3D model and capture angles you want to use.
+        {t(
+          "No screenshots captured yet. Rotate the 3D model and capture angles you want to use."
+        )}
       </p>
     );
   }

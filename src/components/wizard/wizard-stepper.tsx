@@ -3,6 +3,7 @@
 import { WIZARD_STEPS } from "@/lib/constants";
 import type { WizardStep } from "@/types/app";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/hooks/use-i18n";
 
 interface WizardStepperProps {
   currentStep: WizardStep;
@@ -10,6 +11,8 @@ interface WizardStepperProps {
 }
 
 export function WizardStepper({ currentStep, onStepClick }: WizardStepperProps) {
+  const { t } = useI18n();
+
   return (
     <div className="flex items-center justify-between w-full mb-8">
       {WIZARD_STEPS.map((step, index) => (
@@ -40,10 +43,10 @@ export function WizardStepper({ currentStep, onStepClick }: WizardStepperProps) 
                     : "text-muted-foreground"
                 )}
               >
-                {step.label}
+                {t(step.label)}
               </p>
               <p className="text-xs text-muted-foreground hidden md:block">
-                {step.description}
+                {t(step.description)}
               </p>
             </div>
           </button>

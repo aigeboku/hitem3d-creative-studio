@@ -1,4 +1,5 @@
 export type WizardStep = 1 | 2 | 3 | 4;
+export type Locale = "en" | "ja";
 
 export interface Screenshot {
   id: string;

@@ -1,11 +1,20 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { WizardStep, Screenshot, GeneratedImage } from "@/types/app";
+import type {
+  WizardStep,
+  Screenshot,
+  GeneratedImage,
+  Locale,
+} from "@/types/app";
 import type { PromptItem } from "@/types/gemini";
 import type { Hitem3DTaskStatus } from "@/types/hitem3d";
 import { DEFAULT_PROMPTS } from "@/lib/constants";
 
 interface AppState {
+  // Locale
+  locale: Locale;
+  setLocale: (locale: Locale) => void;
+
   // Wizard
   currentStep: WizardStep;
   setCurrentStep: (step: WizardStep) => void;
@@ -47,6 +56,10 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
+      // Locale
+      locale: "en",
+      setLocale: (locale) => set({ locale }),
+
       // Wizard
       currentStep: 1,
       setCurrentStep: (step) => set({ currentStep: step }),
@@ -105,18 +118,21 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "hitem3d-creative-studio",
-      version: 2,
+      version: 3,
       partialize: (state) => ({
+        locale: state.locale,
         activePresetId: state.activePresetId,
         currentPrompts: state.currentPrompts,
       }),
       migrate: (persistedState) => {
         const state = persistedState as Partial<{
+          locale: Locale;
           activePresetId: string;
           currentPrompts: PromptItem[];
         }>;
 
         return {
+          locale: state?.locale === "ja" ? "ja" : "en",
           activePresetId:
             typeof state?.activePresetId === "string"
               ? state.activePresetId

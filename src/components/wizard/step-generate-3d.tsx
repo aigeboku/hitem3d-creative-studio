@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAppStore } from "@/stores/app-store";
 import { useHitem3d } from "@/hooks/use-hitem3d";
 import { useShallow } from "zustand/react/shallow";
+import { useI18n } from "@/hooks/use-i18n";
 
 export function StepGenerate3D() {
   const {
@@ -34,6 +35,7 @@ export function StepGenerate3D() {
   );
 
   const { generate3DModel, stopPolling } = useHitem3d();
+  const { t } = useI18n();
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +54,7 @@ export function StepGenerate3D() {
     try {
       await generate3DModel(uploadedImageFile);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate 3D model");
+      setError(err instanceof Error ? err.message : t("Failed to generate 3D model"));
       stopPolling();
     } finally {
       setGenerating(false);
@@ -62,15 +64,15 @@ export function StepGenerate3D() {
   const statusLabel = (() => {
     switch (taskStatus) {
       case "waiting":
-        return "Waiting in queue...";
+        return t("Waiting in queue...");
       case "processing":
-        return `Processing... ${taskProgress}%`;
+        return `${t("Generating...")} ${taskProgress}%`;
       case "success":
-        return "3D model generated!";
+        return t("3D model generated!");
       case "failed":
-        return "Generation failed";
+        return t("Generation failed");
       default:
-        return "Ready to generate";
+        return t("Ready to generate");
     }
   })();
 
@@ -84,9 +86,9 @@ export function StepGenerate3D() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Step 2: Generate 3D Model</CardTitle>
+        <CardTitle>{t("Step 2: Generate 3D Model")}</CardTitle>
         <CardDescription>
-          Convert your image to a 3D model using Hitem3D.
+          {t("Convert your image to a 3D model using Hitem3D.")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -94,7 +96,7 @@ export function StepGenerate3D() {
           <div className="flex justify-center">
             <img
               src={uploadedImage}
-              alt="Source"
+              alt={t("Source")}
               className="max-h-40 rounded-lg border object-contain"
             />
           </div>
@@ -111,7 +113,7 @@ export function StepGenerate3D() {
         )}
 
         {error && (
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm text-red-600">{t(error)}</p>
         )}
 
         <div className="flex justify-between">
@@ -120,7 +122,7 @@ export function StepGenerate3D() {
             onClick={() => setCurrentStep(1)}
             disabled={generating}
           >
-            Back
+            {t("Back Button")}
           </Button>
 
           <div className="flex gap-2">
@@ -129,13 +131,13 @@ export function StepGenerate3D() {
                 onClick={handleGenerate}
                 disabled={generating || !uploadedImageFile}
               >
-                {generating ? "Generating..." : "Generate 3D Model"}
+                {generating ? t("Generating...") : t("Generate 3D Model")}
               </Button>
             )}
 
             {glbUrl && (
               <Button onClick={() => setCurrentStep(3)}>
-                Next: View & Screenshot
+                {t("Next: View & Screenshot")}
               </Button>
             )}
           </div>

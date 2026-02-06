@@ -17,6 +17,7 @@ import { useGemini } from "@/hooks/use-gemini";
 import type { PromptItem, ReferenceImage } from "@/types/gemini";
 import { parseDataUrl } from "@/lib/data-url";
 import { useShallow } from "zustand/react/shallow";
+import { useI18n } from "@/hooks/use-i18n";
 
 export function StepImageGeneration() {
   const {
@@ -36,6 +37,7 @@ export function StepImageGeneration() {
   );
 
   const { generateImage } = useGemini();
+  const { t } = useI18n();
   const generationAbortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
 
@@ -73,14 +75,14 @@ export function StepImageGeneration() {
       const parsed = parseDataUrl(uploadedImage);
       if (!parsed) {
         setGenerating(false);
-        setErrors(["Invalid uploaded image data. Please upload the image again."]);
+        setErrors([t("Invalid uploaded image data. Please upload the image again.")]);
         return;
       }
 
       referenceImages.push({
         base64: parsed.base64,
         mimeType: parsed.mimeType,
-        label: "Original image",
+        label: t("Original image"),
       });
     }
 
@@ -88,7 +90,7 @@ export function StepImageGeneration() {
       const parsed = parseDataUrl(ss.dataUrl);
       if (!parsed) {
         setGenerating(false);
-        setErrors([`Invalid screenshot data: ${ss.label}`]);
+        setErrors([`${t("Invalid screenshot data:")} ${ss.label}`]);
         return;
       }
 
@@ -113,7 +115,7 @@ export function StepImageGeneration() {
         const controller = new AbortController();
         generationAbortRef.current = controller;
 
-        await generateImage(fullPrompt, promptItem.label, referenceImages, {
+        await generateImage(fullPrompt, t(promptItem.label), referenceImages, {
           signal: controller.signal,
         });
       } catch (err) {
@@ -124,9 +126,9 @@ export function StepImageGeneration() {
           break;
         }
 
-        const msg = err instanceof Error ? err.message : "Generation failed";
+        const msg = err instanceof Error ? err.message : t("Generation failed");
         if (mountedRef.current) {
-          setErrors((prev) => [...prev, `${promptItem.label}: ${msg}`]);
+          setErrors((prev) => [...prev, `${t(promptItem.label)}: ${t(msg)}`]);
         }
       }
 
@@ -146,6 +148,7 @@ export function StepImageGeneration() {
     screenshots,
     generateImage,
     clearGeneratedImages,
+    t,
   ]);
 
   const progressValue =
@@ -154,26 +157,27 @@ export function StepImageGeneration() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Step 4: AI Image Generation</CardTitle>
+        <CardTitle>{t("Step 4: AI Image Generation")}</CardTitle>
         <CardDescription>
-          Generate new images using the original image and 3D screenshots as
-          references.
+          {t(
+            "Generate new images using the original image and 3D screenshots as references."
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Reference images summary */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium">Reference Images</h4>
+          <h4 className="text-sm font-medium">{t("Reference Images")}</h4>
           <div className="flex gap-2 overflow-x-auto pb-2">
             {uploadedImage && (
               <div className="shrink-0 relative">
                 <img
                   src={uploadedImage}
-                  alt="Original"
+                  alt={t("Original")}
                   className="w-16 h-16 object-cover rounded border-2 border-blue-500"
                 />
                 <span className="absolute -top-1 -left-1 bg-blue-500 text-white text-[10px] px-1 rounded">
-                  Original
+                  {t("Original")}
                 </span>
               </div>
             )}
@@ -203,7 +207,7 @@ export function StepImageGeneration() {
         {generating && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span>Generating images...</span>
+              <span>{t("Generating images...")}</span>
               <span className="text-muted-foreground">
                 {completedCount}/{totalCount}
               </span>
@@ -217,7 +221,7 @@ export function StepImageGeneration() {
           <div className="space-y-1">
             {errors.map((err, i) => (
               <p key={i} className="text-sm text-red-600">
-                {err}
+                {t(err)}
               </p>
             ))}
           </div>
@@ -230,8 +234,8 @@ export function StepImageGeneration() {
             className="flex-1"
           >
             {generating
-              ? `Generating (${completedCount}/${totalCount})...`
-              : `Generate ${selectedPrompts.length} Images`}
+              ? `${t("Generating...")} (${completedCount}/${totalCount})...`
+              : `${t("Generate")} ${selectedPrompts.length} ${t("Images")}`}
           </Button>
         </div>
 
@@ -244,7 +248,7 @@ export function StepImageGeneration() {
             onClick={() => setCurrentStep(3)}
             disabled={generating}
           >
-            Back to Screenshots
+            {t("Back to Screenshots")}
           </Button>
           <Button
             variant="outline"
@@ -253,7 +257,7 @@ export function StepImageGeneration() {
             }}
             disabled={generating}
           >
-            Start Over
+            {t("Start Over")}
           </Button>
         </div>
       </CardContent>

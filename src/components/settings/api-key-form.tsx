@@ -12,9 +12,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useCredentialsStatus } from "@/hooks/use-credentials-status";
+import { useI18n } from "@/hooks/use-i18n";
 
 export function ApiKeyForm() {
   const { status, refresh } = useCredentialsStatus();
+  const { t } = useI18n();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,7 +39,7 @@ export function ApiKeyForm() {
       | null;
 
     if (!response.ok || !payload?.valid) {
-      throw new Error(payload?.error || "Failed to save Hitem3D credentials.");
+      throw new Error(payload?.error || t("Failed to save Hitem3D credentials."));
     }
 
     await refresh();
@@ -54,7 +56,7 @@ export function ApiKeyForm() {
       await saveCredentials();
       setSuccess("Credentials saved securely.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(err instanceof Error ? err.message : t("Unknown error"));
     } finally {
       setSaving(false);
     }
@@ -77,13 +79,13 @@ export function ApiKeyForm() {
         | null;
 
       if (!balanceResponse.ok || typeof payload?.balance !== "number") {
-        throw new Error(payload?.error || "Failed to check balance.");
+        throw new Error(payload?.error || t("Failed to check balance."));
       }
 
       setBalance(payload.balance);
       setSuccess("Credentials verified.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(err instanceof Error ? err.message : t("Unknown error"));
     } finally {
       setChecking(false);
     }
@@ -98,14 +100,14 @@ export function ApiKeyForm() {
     try {
       const response = await fetch("/api/hitem3d/auth", { method: "DELETE" });
       if (!response.ok) {
-        throw new Error("Failed to clear stored credentials.");
+        throw new Error(t("Failed to clear stored credentials."));
       }
       setUsername("");
       setPassword("");
       await refresh();
       setSuccess("Stored credentials were cleared.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(err instanceof Error ? err.message : t("Unknown error"));
     } finally {
       setClearing(false);
     }
@@ -114,14 +116,14 @@ export function ApiKeyForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Hitem3D API</CardTitle>
+        <CardTitle>{t("Hitem3D API")}</CardTitle>
         <CardDescription>
-          Enter your Hitem3D username and password, then save securely.
+          {t("Enter your Hitem3D username and password, then save securely.")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="hitem3d-username">Username</Label>
+          <Label htmlFor="hitem3d-username">{t("Username")}</Label>
           <Input
             id="hitem3d-username"
             value={username}
@@ -131,7 +133,7 @@ export function ApiKeyForm() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="hitem3d-password">Password</Label>
+          <Label htmlFor="hitem3d-password">{t("Password")}</Label>
           <div className="flex gap-2">
             <Input
               id="hitem3d-password"
@@ -147,7 +149,7 @@ export function ApiKeyForm() {
               onClick={() => setShowPassword((prev) => !prev)}
               className="shrink-0"
             >
-              {showPassword ? "Hide" : "Show"}
+              {showPassword ? t("Hide") : t("Show")}
             </Button>
           </div>
         </div>
@@ -158,32 +160,34 @@ export function ApiKeyForm() {
             variant="outline"
             disabled={!username || !password || saving || checking || clearing}
           >
-            {saving ? "Saving..." : "Save Credentials"}
+            {saving ? t("Saving...") : t("Save Credentials")}
           </Button>
           <Button onClick={handleCheckBalance} disabled={checking || saving || clearing}>
-            {checking ? "Checking..." : "Validate & Check Balance"}
+            {checking ? t("Checking...") : t("Validate & Check Balance")}
           </Button>
           <Button
             variant="destructive"
             onClick={handleClear}
             disabled={clearing || saving || checking}
           >
-            {clearing ? "Clearing..." : "Clear Stored Credentials"}
+            {clearing ? t("Clearing...") : t("Clear Stored Credentials")}
           </Button>
         </div>
 
         {status.hasHitem3dCredentials && (
           <p className="text-sm text-muted-foreground">
-            Credentials are currently stored for this browser.
+            {t("Credentials are currently stored for this browser.")}
           </p>
         )}
 
         {balance !== null && (
-          <p className="text-sm text-green-600">Balance: {balance} credits</p>
+          <p className="text-sm text-green-600">
+            {t("Balance")}: {balance} {t("credits")}
+          </p>
         )}
 
-        {success && <p className="text-sm text-green-600">{success}</p>}
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {success && <p className="text-sm text-green-600">{t(success)}</p>}
+        {error && <p className="text-sm text-red-600">{t(error)}</p>}
       </CardContent>
     </Card>
   );

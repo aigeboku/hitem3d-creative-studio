@@ -17,6 +17,7 @@ import { ScreenshotGallery } from "@/components/three-viewer/screenshot-gallery"
 import { useAppStore } from "@/stores/app-store";
 import { useScreenshot } from "@/hooks/use-screenshot";
 import { useShallow } from "zustand/react/shallow";
+import { useI18n } from "@/hooks/use-i18n";
 
 export function StepViewerScreenshot() {
   const { glbUrl, screenshots, setCurrentStep } = useAppStore(
@@ -28,8 +29,9 @@ export function StepViewerScreenshot() {
   );
   const { captureScreenshot } = useScreenshot();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [screenshotLabel, setScreenshotLabel] = useState("Custom Angle");
-  const [currentAngle, setCurrentAngle] = useState("Custom Angle");
+  const { t } = useI18n();
+  const [screenshotLabel, setScreenshotLabel] = useState(t("Custom Angle"));
+  const [currentAngle, setCurrentAngle] = useState(t("Custom Angle"));
   const [targetCameraPosition, setTargetCameraPosition] = useState<
     [number, number, number] | null
   >(null);
@@ -52,7 +54,7 @@ export function StepViewerScreenshot() {
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
-          No 3D model available. Please go back and generate one first.
+          {t("No 3D model available. Please go back and generate one first.")}
         </CardContent>
       </Card>
     );
@@ -61,10 +63,11 @@ export function StepViewerScreenshot() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Step 3: View & Capture Screenshots</CardTitle>
+        <CardTitle>{t("Step 3: View & Capture Screenshots")}</CardTitle>
         <CardDescription>
-          Rotate the 3D model to your desired angle and capture screenshots.
-          These will be used as reference for AI image generation.
+          {t(
+            "Rotate the 3D model to your desired angle and capture screenshots. These will be used as reference for AI image generation."
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -75,17 +78,17 @@ export function StepViewerScreenshot() {
         />
 
         <div className="space-y-3">
-          <h4 className="text-sm font-medium">Preset Angles</h4>
+          <h4 className="text-sm font-medium">{t("Preset Angles")}</h4>
           <SceneControlsUI onPresetClick={handlePresetClick} />
         </div>
 
         <div className="flex gap-2 items-end">
           <div className="flex-1 space-y-1">
-            <label className="text-sm font-medium">Screenshot Label</label>
+            <label className="text-sm font-medium">{t("Screenshot Label")}</label>
             <Input
               value={screenshotLabel}
               onChange={(e) => setScreenshotLabel(e.target.value)}
-              placeholder="e.g., Front View"
+              placeholder={t("e.g., Front View")}
             />
           </div>
           <ScreenshotButton onCapture={handleCapture} />
@@ -93,20 +96,20 @@ export function StepViewerScreenshot() {
 
         <div className="space-y-2">
           <h4 className="text-sm font-medium">
-            Captured Screenshots ({screenshots.length})
+            {t("Captured Screenshots")} ({screenshots.length})
           </h4>
           <ScreenshotGallery />
         </div>
 
         <div className="flex justify-between">
           <Button variant="outline" onClick={() => setCurrentStep(2)}>
-            Back
+            {t("Back Button")}
           </Button>
           <Button
             onClick={() => setCurrentStep(4)}
             disabled={screenshots.length === 0}
           >
-            Next: Generate Images ({screenshots.length} screenshots)
+            {`${t("Next: Generate Images")} (${screenshots.length} ${t("screenshots")})`}
           </Button>
         </div>
       </CardContent>
