@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# hitem3d-creative-studio
 
-## Getting Started
+Next.js App Router web app for:
+- generating 3D models from images via HitEM3D
+- taking 3D viewer screenshots
+- generating new images with Gemini using those references
 
-First, run the development server:
+## Stack
+- Next.js 16
+- React 19
+- TypeScript
+- Zustand
+- React Three Fiber / Drei
+- shadcn/ui
 
+## User flow (public usage)
+1. Open `Settings`
+2. Register your own HitEM3D credentials
+3. Register your own Gemini API key
+4. Upload image -> generate 3D -> take screenshots -> generate images
+
+Credentials are stored in encrypted `HttpOnly` cookies per browser session context (not in `localStorage`).
+
+## Local development
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Production deployment (Vercel recommended)
+1. Push this repository to GitHub.
+2. Import project into Vercel.
+3. Set environment variables from `.env.example`.
+4. Deploy.
+5. Run smoke test:
+   - open `/settings`
+   - validate both credentials
+   - complete one full wizard run
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Required environment variables
+Create environment variables in your hosting platform:
 
-## Learn More
+- `CREDENTIALS_COOKIE_SECRET`
+  - required in production
+  - use a long random secret (32+ chars)
+- `APP_ORIGIN`
+  - public app origin, e.g. `https://your-domain.example`
 
-To learn more about Next.js, take a look at the following resources:
+### Optional environment variables
+- `HITEM3D_BASE_URL` (default: `https://api.hitem3d.com`)
+- `GEMINI_MODEL` (default: `gemini-3-pro-image-preview`)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Security notes
+- Outbound HitEM3D base URL is HTTPS-only.
+- API routes enforce same-origin checks for mutating requests.
+- API routes include rate limiting and payload validation.
+- API responses for secrets/errors are sanitized.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Operational notes
+- Current rate limit storage is in-memory. It works for single-instance deployments.
+- For high-traffic multi-instance deployments, move rate limiting to Redis/KV.
 
-## Deploy on Vercel
+## CI
+GitHub Actions workflow (`.github/workflows/ci.yml`) runs:
+- lint
+- typecheck
+- production build
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Local pre-check command:
+```bash
+npm run check
+```

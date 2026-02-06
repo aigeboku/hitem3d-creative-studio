@@ -22,9 +22,24 @@ export default function SettingsPage() {
 
           <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-950">
             <h3 className="font-medium text-yellow-800 dark:text-yellow-200">
-              Security Note
+              Setup Guide
             </h3>
             <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+              1) Create a HitEM3D account and copy your username/password.
+              <br />
+              2) Create a Gemini API key from{" "}
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                Google AI Studio
+              </a>
+              .
+              <br />
+              3) Save both credentials on this page.
+              <br />
               Credentials are stored in secure HttpOnly cookies on this browser.
               For production use, set `CREDENTIALS_COOKIE_SECRET` on the server.
             </p>

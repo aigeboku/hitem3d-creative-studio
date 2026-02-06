@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const rateWindow = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_CLEANUP_INTERVAL_MS = 60_000;
+const RATE_LIMIT_MAX_ENTRIES = 10_000;
+let lastCleanupAt = 0;
 
 interface RateLimitOptions {
   key: string;
@@ -10,7 +13,17 @@ interface RateLimitOptions {
 
 export function enforceSameOrigin(request: NextRequest): NextResponse | null {
   const origin = request.headers.get("origin");
-  if (!origin) return null;
+  const secFetchSite = request.headers.get("sec-fetch-site");
+
+  if (!origin) {
+    if (secFetchSite === "cross-site") {
+      return NextResponse.json(
+        { error: "Forbidden request origin" },
+        { status: 403 }
+      );
+    }
+    return null;
+  }
 
   const host = request.headers.get("host");
   if (!host) {
@@ -44,6 +57,8 @@ export function enforceRateLimit(
 ): NextResponse | null {
   const ip = getClientIp(request);
   const now = Date.now();
+  cleanupRateWindow(now);
+
   const bucketKey = `${options.key}:${ip}`;
   const previous = rateWindow.get(bucketKey);
 
@@ -71,4 +86,32 @@ function getClientIp(request: NextRequest): string {
   }
 
   return request.headers.get("x-real-ip") || "unknown";
+}
+
+function cleanupRateWindow(now: number): void {
+  const needsSizeCleanup = rateWindow.size > RATE_LIMIT_MAX_ENTRIES;
+  if (
+    !needsSizeCleanup &&
+    now - lastCleanupAt < RATE_LIMIT_CLEANUP_INTERVAL_MS
+  ) {
+    return;
+  }
+
+  for (const [key, value] of rateWindow.entries()) {
+    if (value.resetAt <= now) {
+      rateWindow.delete(key);
+    }
+  }
+
+  if (rateWindow.size > RATE_LIMIT_MAX_ENTRIES) {
+    const overflow = rateWindow.size - RATE_LIMIT_MAX_ENTRIES;
+    let removed = 0;
+    for (const key of rateWindow.keys()) {
+      rateWindow.delete(key);
+      removed += 1;
+      if (removed >= overflow) break;
+    }
+  }
+
+  lastCleanupAt = now;
 }
