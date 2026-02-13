@@ -104,8 +104,14 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Gemini generate error:", error);
+    const message =
+      error instanceof Error && error.message.includes("Operation timed out")
+        ? "Gemini request timed out. Please try again."
+        : error instanceof Error && error.message.trim().length > 0
+          ? error.message
+          : "Image generation failed. Please try again.";
     return NextResponse.json(
-      { error: "Image generation failed. Please try again." },
+      { error: message },
       { status: 502 }
     );
   }

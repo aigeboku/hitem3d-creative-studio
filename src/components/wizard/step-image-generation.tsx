@@ -39,14 +39,23 @@ export function StepImageGeneration() {
   const { generateImage } = useGemini();
   const { t } = useI18n();
   const generationAbortRef = useRef<AbortController | null>(null);
+  const batchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
+
+  const clearBatchTimeout = useCallback(() => {
+    if (batchTimeoutRef.current) {
+      clearTimeout(batchTimeoutRef.current);
+      batchTimeoutRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
       mountedRef.current = false;
+      clearBatchTimeout();
       generationAbortRef.current?.abort();
     };
-  }, []);
+  }, [clearBatchTimeout]);
 
   const [selectedPrompts, setSelectedPrompts] = useState<PromptItem[]>(
     currentPrompts.slice(0, 4)
@@ -64,82 +73,99 @@ export function StepImageGeneration() {
     clearGeneratedImages();
     setCompletedCount(0);
     setErrors([]);
+    clearBatchTimeout();
 
     const total = selectedPrompts.length;
     setTotalCount(total);
-
-    // Build reference images: original + screenshots
-    const referenceImages: ReferenceImage[] = [];
-
-    if (uploadedImage) {
-      const parsed = parseDataUrl(uploadedImage);
-      if (!parsed) {
-        setGenerating(false);
-        setErrors([t("Invalid uploaded image data. Please upload the image again.")]);
-        return;
+    const batchTimeoutMs = Math.max(4 * 60_000, total * 95_000);
+    batchTimeoutRef.current = setTimeout(() => {
+      generationAbortRef.current?.abort();
+      if (mountedRef.current) {
+        setErrors((prev) => [
+          ...prev,
+          t("Image generation is taking too long. Please try fewer prompts."),
+        ]);
       }
+    }, batchTimeoutMs);
 
-      referenceImages.push({
-        base64: parsed.base64,
-        mimeType: parsed.mimeType,
-        label: t("Original image"),
-      });
-    }
+    try {
+      // Build reference images: original + screenshots
+      const referenceImages: ReferenceImage[] = [];
 
-    for (const ss of screenshots) {
-      const parsed = parseDataUrl(ss.dataUrl);
-      if (!parsed) {
-        setGenerating(false);
-        setErrors([`${t("Invalid screenshot data:")} ${ss.label}`]);
-        return;
-      }
+      if (uploadedImage) {
+        const parsed = parseDataUrl(uploadedImage);
+        if (!parsed) {
+          setErrors([t("Invalid uploaded image data. Please upload the image again.")]);
+          return;
+        }
 
-      referenceImages.push({
-        base64: parsed.base64,
-        mimeType: parsed.mimeType,
-        label: ss.label,
-      });
-    }
-
-    // Generate images sequentially to avoid rate limits
-    for (const promptItem of selectedPrompts) {
-      if (!mountedRef.current) {
-        break;
-      }
-
-      const fullPrompt = customPrompt
-        ? `${promptItem.prompt} ${customPrompt}`
-        : promptItem.prompt;
-
-      try {
-        const controller = new AbortController();
-        generationAbortRef.current = controller;
-
-        await generateImage(fullPrompt, t(promptItem.label), referenceImages, {
-          signal: controller.signal,
+        referenceImages.push({
+          base64: parsed.base64,
+          mimeType: parsed.mimeType,
+          label: t("Original image"),
         });
-      } catch (err) {
-        if (
-          (err instanceof DOMException && err.name === "AbortError") ||
-          (err instanceof Error && err.name === "AbortError")
-        ) {
+      }
+
+      for (const ss of screenshots) {
+        const parsed = parseDataUrl(ss.dataUrl);
+        if (!parsed) {
+          setErrors([`${t("Invalid screenshot data:")} ${ss.label}`]);
+          return;
+        }
+
+        referenceImages.push({
+          base64: parsed.base64,
+          mimeType: parsed.mimeType,
+          label: ss.label,
+        });
+      }
+
+      // Generate images sequentially to avoid rate limits
+      for (const promptItem of selectedPrompts) {
+        if (!mountedRef.current) {
           break;
         }
 
-        const msg = err instanceof Error ? err.message : t("Generation failed");
+        const fullPrompt = customPrompt
+          ? `${promptItem.prompt} ${customPrompt}`
+          : promptItem.prompt;
+
+        try {
+          const controller = new AbortController();
+          generationAbortRef.current = controller;
+
+          await generateImage(fullPrompt, t(promptItem.label), referenceImages, {
+            signal: controller.signal,
+          });
+        } catch (err) {
+          if (
+            (err instanceof DOMException && err.name === "AbortError") ||
+            (err instanceof Error && err.name === "AbortError")
+          ) {
+            break;
+          }
+
+          const msg = err instanceof Error ? err.message : t("Generation failed");
+          if (mountedRef.current) {
+            setErrors((prev) => [...prev, `${t(promptItem.label)}: ${t(msg)}`]);
+          }
+        }
+
         if (mountedRef.current) {
-          setErrors((prev) => [...prev, `${t(promptItem.label)}: ${t(msg)}`]);
+          setCompletedCount((prev) => prev + 1);
         }
       }
-
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t("Generation failed");
       if (mountedRef.current) {
-        setCompletedCount((prev) => prev + 1);
+        setErrors((prev) => [...prev, t(msg)]);
       }
-    }
-
-    generationAbortRef.current = null;
-    if (mountedRef.current) {
-      setGenerating(false);
+    } finally {
+      generationAbortRef.current = null;
+      clearBatchTimeout();
+      if (mountedRef.current) {
+        setGenerating(false);
+      }
     }
   }, [
     selectedPrompts,
@@ -148,8 +174,19 @@ export function StepImageGeneration() {
     screenshots,
     generateImage,
     clearGeneratedImages,
+    clearBatchTimeout,
     t,
   ]);
+
+  const handleCancelGeneration = useCallback(() => {
+    clearBatchTimeout();
+    generationAbortRef.current?.abort();
+    generationAbortRef.current = null;
+    if (mountedRef.current) {
+      setGenerating(false);
+      setErrors((prev) => [...prev, t("Generation cancelled.")]);
+    }
+  }, [clearBatchTimeout, t]);
 
   const progressValue =
     totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
@@ -237,6 +274,11 @@ export function StepImageGeneration() {
               ? `${t("Generating...")} (${completedCount}/${totalCount})...`
               : `${t("Generate")} ${selectedPrompts.length} ${t("Images")}`}
           </Button>
+          {generating && (
+            <Button variant="outline" onClick={handleCancelGeneration}>
+              {t("Cancel Generation")}
+            </Button>
+          )}
         </div>
 
         {/* Results */}

@@ -14,7 +14,7 @@ interface GenerateImageOptions {
   signal?: AbortSignal;
 }
 
-const GEMINI_REQUEST_TIMEOUT_MS = 90_000;
+const GEMINI_REQUEST_TIMEOUT_MS = 75_000;
 
 export function useGemini() {
   const addGeneratedImage = useAppStore((state) => state.addGeneratedImage);

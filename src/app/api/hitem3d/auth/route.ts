@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { HITEM3D_BASE_URL } from "@/lib/server/config";
 import { fetchWithTimeout, readJsonSafely } from "@/lib/server/http";
-import { isSuccessCode } from "@/lib/server/hitem3d";
+import {
+  extractApiMessage,
+  extractExpireAt,
+  extractToken,
+  isSuccessCode,
+} from "@/lib/server/hitem3d";
 import {
   clearHitem3dCredentials,
   clearHitem3dToken,
@@ -11,8 +16,8 @@ import {
 import { enforceRateLimit, enforceSameOrigin } from "@/lib/server/security";
 
 interface AuthRequestBody {
-  username: string;
-  password: string;
+  accessKey: string;
+  secretKey: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -29,7 +34,7 @@ export async function POST(request: NextRequest) {
   const body = await parseBody(request);
   if (!body) {
     return NextResponse.json(
-      { error: "Username and password are required." },
+      { error: "Access Key and Secret Key are required." },
       { status: 400 }
     );
   }
@@ -42,7 +47,7 @@ export async function POST(request: NextRequest) {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Basic ${Buffer.from(
-            `${body.username}:${body.password}`
+            `${body.accessKey}:${body.secretKey}`
           ).toString("base64")}`,
         },
       }
@@ -50,11 +55,15 @@ export async function POST(request: NextRequest) {
 
     const authData = await readJsonSafely(authResponse);
     const token = extractToken(authData);
+    const upstreamMessage = extractApiMessage(authData);
 
     if (!authResponse.ok || !isSuccessCode(authData) || !token) {
       return NextResponse.json(
-        { error: "Authentication failed. Please check your credentials." },
-        { status: 401 }
+        {
+          error:
+            upstreamMessage || "Authentication failed. Please check your credentials.",
+        },
+        { status: authResponse.status === 401 ? 401 : 502 }
       );
     }
 
@@ -69,7 +78,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Hitem3D auth error:", error);
     return NextResponse.json(
-      { error: "Unable to reach Hitem3D. Please try again." },
+      { error: "Unable to reach Hitem3D. Please check API endpoint and try again." },
       { status: 502 }
     );
   }
@@ -96,55 +105,32 @@ async function parseBody(request: NextRequest): Promise<AuthRequestBody | null> 
   const raw = await request.json().catch(() => null);
   if (!raw || typeof raw !== "object") return null;
 
-  const username = (raw as { username?: unknown }).username;
-  const password = (raw as { password?: unknown }).password;
-  if (typeof username !== "string" || typeof password !== "string") {
+  const accessKeyRaw =
+    (raw as { accessKey?: unknown }).accessKey ??
+    (raw as { username?: unknown }).username;
+  const apiKeyRaw =
+    (raw as { secretKey?: unknown }).secretKey ??
+    (raw as { apiSecretKey?: unknown }).apiSecretKey ??
+    (raw as { clientSecret?: unknown }).clientSecret ??
+    (raw as { apiKey?: unknown }).apiKey ??
+    (raw as { password?: unknown }).password;
+
+  if (typeof accessKeyRaw !== "string" || typeof apiKeyRaw !== "string") {
     return null;
   }
 
-  const trimmedUsername = username.trim();
-  const trimmedPassword = password.trim();
-  if (!trimmedUsername || !trimmedPassword) {
+  const accessKey = accessKeyRaw.trim();
+  const apiKey = apiKeyRaw.trim();
+  if (!accessKey || !apiKey) {
     return null;
   }
 
-  if (trimmedUsername.length > 200 || trimmedPassword.length > 200) {
+  if (accessKey.length > 200 || apiKey.length > 200) {
     return null;
   }
 
   return {
-    username: trimmedUsername,
-    password: trimmedPassword,
+    accessKey,
+    secretKey: apiKey,
   };
-}
-
-function extractToken(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null;
-  const data = (payload as { data?: unknown }).data;
-  if (!data || typeof data !== "object") return null;
-  const token = (data as { token?: unknown }).token;
-  return typeof token === "string" && token.length > 0 ? token : null;
-}
-
-function extractExpireAt(payload: unknown): number {
-  if (!payload || typeof payload !== "object") {
-    return Date.now() + 55 * 60 * 1000;
-  }
-
-  const data = (payload as { data?: unknown }).data;
-  if (!data || typeof data !== "object") {
-    return Date.now() + 55 * 60 * 1000;
-  }
-
-  const expireTime = (data as { expire_time?: unknown }).expire_time;
-  if (typeof expireTime !== "string" || expireTime.length === 0) {
-    return Date.now() + 55 * 60 * 1000;
-  }
-
-  const parsedTime = Date.parse(expireTime);
-  if (Number.isNaN(parsedTime)) {
-    return Date.now() + 55 * 60 * 1000;
-  }
-
-  return parsedTime;
 }

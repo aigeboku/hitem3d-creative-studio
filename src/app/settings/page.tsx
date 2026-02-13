@@ -28,7 +28,7 @@ export default function SettingsPage() {
               {t("Setup Guide")}
             </h3>
             <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-              {t("1) Create a HitEM3D account and copy your username/password.")}
+              {t("1) Create a HitEM3D account and copy your Access Key / Secret Key.")}
               <br />
               {t("2) Create a Gemini API key from")}{" "}
               <a

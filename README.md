@@ -15,7 +15,7 @@ Next.js App Router web app for:
 
 ## User flow (public usage)
 1. Open `Settings`
-2. Register your own HitEM3D credentials
+2. Register your own HitEM3D Access Key / Secret Key credentials
 3. Register your own Gemini API key
 4. Upload image -> generate 3D -> take screenshots -> generate images
 
@@ -49,7 +49,9 @@ Create environment variables in your hosting platform:
   - public app origin, e.g. `https://your-domain.example`
 
 ### Optional environment variables
-- `HITEM3D_BASE_URL` (default: `https://api.hitem3d.com`)
+- `HITEM3D_BASE_URL` (default: `https://api.hitem3d.ai`)
+- `HITEM3D_MODEL` (default: `hitem3dv1.5`)
+- `HITEM3D_RESOLUTION` (default: `1024`; for `hitem3dv2.0` default is `1536`)
 - `GEMINI_MODEL` (default: `gemini-3-pro-image-preview`)
 
 ## Security notes

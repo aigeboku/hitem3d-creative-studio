@@ -9,7 +9,8 @@ import type {
   Hitem3DSubmitTaskApiResponse,
 } from "@/types/hitem3d";
 
-const REQUEST_TIMEOUT_MS = 20_000;
+const SUBMIT_REQUEST_TIMEOUT_MS = 75_000;
+const POLL_REQUEST_TIMEOUT_MS = 30_000;
 const POLLING_MAX_ATTEMPTS = 120;
 const POLLING_MAX_DURATION_MS = 10 * 60_000;
 
@@ -52,7 +53,7 @@ export function useHitem3d() {
           method: "POST",
           body: formData,
         },
-        REQUEST_TIMEOUT_MS,
+        SUBMIT_REQUEST_TIMEOUT_MS,
         activeRequestRef
       );
 
@@ -97,7 +98,7 @@ export function useHitem3d() {
             const data = await fetchJsonWithTimeout<Hitem3DQueryTaskApiResponse>(
               `/api/hitem3d/query-task?task_id=${encodeURIComponent(taskId)}`,
               { method: "GET" },
-              REQUEST_TIMEOUT_MS,
+              POLL_REQUEST_TIMEOUT_MS,
               activeRequestRef
             );
 

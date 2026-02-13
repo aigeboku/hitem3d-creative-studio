@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { HITEM3D_BASE_URL } from "@/lib/server/config";
-import { resolveHitem3dToken } from "@/lib/server/hitem3d";
+import {
+  extractApiMessage,
+  isSuccessCode,
+  resolveHitem3dToken,
+} from "@/lib/server/hitem3d";
 import { fetchWithTimeout, readJsonSafely } from "@/lib/server/http";
 import { setHitem3dToken } from "@/lib/server/secure-cookies";
 import { enforceRateLimit } from "@/lib/server/security";
@@ -51,10 +55,11 @@ export async function GET(request: NextRequest) {
 
     const payload = await readJsonSafely(upstreamResponse);
     const parsedTask = parseTask(payload);
+    const upstreamMessage = extractApiMessage(payload);
 
     if (!upstreamResponse.ok || !parsedTask) {
       return NextResponse.json(
-        { error: "Failed to query task status." },
+        { error: upstreamMessage || "Failed to query task status." },
         { status: upstreamResponse.status === 401 ? 401 : 502 }
       );
     }
@@ -80,22 +85,16 @@ function parseTask(payload: unknown): {
   errorMessage: string | null;
 } | null {
   if (!payload || typeof payload !== "object") return null;
-
-  const code = (payload as { code?: unknown }).code;
-  if (typeof code !== "number" || code !== 0) return null;
+  if (!isSuccessCode(payload)) return null;
 
   const data = (payload as { data?: unknown }).data;
   if (!data || typeof data !== "object") return null;
 
-  const status = (data as { status?: unknown }).status;
-  if (
-    status !== "waiting" &&
-    status !== "processing" &&
-    status !== "success" &&
-    status !== "failed"
-  ) {
-    return null;
-  }
+  const rawState =
+    (data as { state?: unknown }).state ??
+    (data as { status?: unknown }).status;
+  const status = normalizeTaskStatus(rawState);
+  if (!status) return null;
 
   const progressRaw = (data as { progress?: unknown }).progress;
   const progress =
@@ -103,8 +102,12 @@ function parseTask(payload: unknown): {
       ? Math.max(0, Math.min(100, progressRaw))
       : 0;
 
-  const outputUrlRaw = (data as { output_url?: unknown }).output_url;
-  const errorMessageRaw = (data as { error_message?: unknown }).error_message;
+  const outputUrlRaw =
+    (data as { url?: unknown }).url ??
+    (data as { output_url?: unknown }).output_url;
+  const errorMessageRaw =
+    (data as { error_message?: unknown }).error_message ??
+    (payload as { msg?: unknown }).msg;
 
   return {
     status,
@@ -112,4 +115,20 @@ function parseTask(payload: unknown): {
     outputUrl: typeof outputUrlRaw === "string" ? outputUrlRaw : null,
     errorMessage: typeof errorMessageRaw === "string" ? errorMessageRaw : null,
   };
+}
+
+function normalizeTaskStatus(raw: unknown): Hitem3DTaskStatus | null {
+  if (raw === "waiting" || raw === "created" || raw === "queueing") {
+    return "waiting";
+  }
+  if (raw === "processing") {
+    return "processing";
+  }
+  if (raw === "success") {
+    return "success";
+  }
+  if (raw === "failed") {
+    return "failed";
+  }
+  return null;
 }

@@ -12,8 +12,8 @@ const GEMINI_KEY_COOKIE = "gemini_api_key";
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 export interface Hitem3dCredentials {
-  username: string;
-  password: string;
+  accessKey: string;
+  secretKey: string;
 }
 
 export interface Hitem3dToken {
@@ -28,10 +28,12 @@ interface GeminiCredentials {
 export function getHitem3dCredentials(
   request: NextRequest
 ): Hitem3dCredentials | null {
-  return readEncryptedCookie<Hitem3dCredentials>(
+  const payload = readEncryptedCookie<Record<string, unknown>>(
     request,
     HITEM3D_CREDENTIALS_COOKIE
   );
+  if (!payload) return null;
+  return normalizeHitem3dCredentials(payload);
 }
 
 export function setHitem3dCredentials(
@@ -98,6 +100,35 @@ export function clearGeminiApiKey(response: NextResponse): void {
 
 export function hasHitem3dCredentials(request: NextRequest): boolean {
   return !!getHitem3dCredentials(request);
+}
+
+function normalizeHitem3dCredentials(
+  payload: Record<string, unknown>
+): Hitem3dCredentials | null {
+  const accessKeyRaw =
+    typeof payload.accessKey === "string"
+      ? payload.accessKey
+      : typeof payload.username === "string"
+        ? payload.username
+        : "";
+  const secretKeyRaw =
+    typeof payload.secretKey === "string"
+      ? payload.secretKey
+      : typeof payload.apiSecretKey === "string"
+        ? payload.apiSecretKey
+        : typeof payload.clientSecret === "string"
+          ? payload.clientSecret
+          : typeof payload.apiKey === "string"
+            ? payload.apiKey
+            : typeof payload.password === "string"
+              ? payload.password
+              : "";
+
+  const accessKey = accessKeyRaw.trim();
+  const secretKey = secretKeyRaw.trim();
+  if (!accessKey || !secretKey) return null;
+
+  return { accessKey, secretKey };
 }
 
 export function hasGeminiApiKey(request: NextRequest): boolean {

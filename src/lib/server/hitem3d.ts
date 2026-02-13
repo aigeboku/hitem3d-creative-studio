@@ -43,7 +43,7 @@ export async function resolveHitem3dToken(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Basic ${Buffer.from(
-          `${credentials.username}:${credentials.password}`
+          `${credentials.accessKey}:${credentials.secretKey}`
         ).toString("base64")}`,
       },
     }
@@ -52,7 +52,7 @@ export async function resolveHitem3dToken(
   const authData = await readJsonSafely(authResponse);
   const token = extractToken(authData);
 
-  if (!authResponse.ok || !token) {
+  if (!authResponse.ok || !isSuccessCode(authData) || !token) {
     return {
       error: "Failed to authenticate with Hitem3D. Please re-check credentials.",
       status: authResponse.status === 401 ? 401 : 502,
@@ -72,36 +72,84 @@ export async function resolveHitem3dToken(
 export function isSuccessCode(payload: unknown): boolean {
   if (!payload || typeof payload !== "object") return false;
   const code = (payload as { code?: unknown }).code;
-  return typeof code === "number" && code === 0;
+  return code === 0 || code === 200 || code === "0" || code === "200";
 }
 
-function extractToken(payload: unknown): string | null {
+export function extractToken(payload: unknown): string | null {
+  const data = extractDataObject(payload);
+  if (!data) return null;
+
+  const tokenCandidate =
+    (data as { accessToken?: unknown }).accessToken ??
+    (data as { access_token?: unknown }).access_token ??
+    (data as { token?: unknown }).token;
+
+  return typeof tokenCandidate === "string" && tokenCandidate.length > 0
+    ? tokenCandidate
+    : null;
+}
+
+export function extractExpireAt(payload: unknown): number {
+  const data = extractDataObject(payload);
+  const expireRaw =
+    (data as { expireTime?: unknown } | null)?.expireTime ??
+    (data as { expire_time?: unknown } | null)?.expire_time ??
+    (data as { expiresIn?: unknown } | null)?.expiresIn ??
+    (data as { expires_in?: unknown } | null)?.expires_in;
+
+  const parsed = parseExpireTime(expireRaw, Date.now());
+  if (parsed !== null) return parsed;
+
+  // HitEM3D access token expiry is around 24 hours.
+  return Date.now() + 23 * 60 * 60 * 1000;
+}
+
+export function extractApiMessage(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const message =
+    (payload as { msg?: unknown }).msg ??
+    (payload as { message?: unknown }).message;
+  return typeof message === "string" && message.trim().length > 0
+    ? message.trim()
+    : null;
+}
+
+function extractDataObject(payload: unknown): Record<string, unknown> | null {
   if (!payload || typeof payload !== "object") return null;
   const data = (payload as { data?: unknown }).data;
-  if (!data || typeof data !== "object") return null;
-  const token = (data as { token?: unknown }).token;
-  return typeof token === "string" && token.length > 0 ? token : null;
+  return data && typeof data === "object" ? (data as Record<string, unknown>) : null;
 }
 
-function extractExpireAt(payload: unknown): number {
-  if (!payload || typeof payload !== "object") {
-    return Date.now() + 55 * 60 * 1000;
+function parseExpireTime(raw: unknown, nowMs: number): number | null {
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return normalizeTimeValue(raw, nowMs);
   }
 
-  const data = (payload as { data?: unknown }).data;
-  if (!data || typeof data !== "object") {
-    return Date.now() + 55 * 60 * 1000;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+
+    const numeric = Number(trimmed);
+    if (Number.isFinite(numeric)) {
+      return normalizeTimeValue(numeric, nowMs);
+    }
+
+    const parsed = Date.parse(trimmed);
+    return Number.isNaN(parsed) ? null : parsed;
   }
 
-  const expireTime = (data as { expire_time?: unknown }).expire_time;
-  if (typeof expireTime !== "string" || expireTime.length === 0) {
-    return Date.now() + 55 * 60 * 1000;
-  }
+  return null;
+}
 
-  const parsed = Date.parse(expireTime);
-  if (Number.isNaN(parsed)) {
-    return Date.now() + 55 * 60 * 1000;
+function normalizeTimeValue(value: number, nowMs: number): number {
+  // values smaller than one year in seconds are treated as relative TTL.
+  if (value > 0 && value < 365 * 24 * 60 * 60) {
+    return nowMs + value * 1000;
   }
-
-  return parsed;
+  // unix timestamp in seconds
+  if (value > 0 && value < 10_000_000_000) {
+    return value * 1000;
+  }
+  // unix timestamp in milliseconds
+  return value;
 }

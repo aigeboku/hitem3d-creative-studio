@@ -17,8 +17,8 @@ import { useI18n } from "@/hooks/use-i18n";
 export function ApiKeyForm() {
   const { status, refresh } = useCredentialsStatus();
   const { t } = useI18n();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [accessKey, setAccessKey] = useState("");
+  const [apiSecretKey, setApiSecretKey] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -31,7 +31,7 @@ export function ApiKeyForm() {
     const response = await fetch("/api/hitem3d/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ accessKey, secretKey: apiSecretKey }),
     });
 
     const payload = (await response.json().catch(() => null)) as
@@ -69,7 +69,7 @@ export function ApiKeyForm() {
     setBalance(null);
 
     try {
-      if (username && password) {
+      if (accessKey && apiSecretKey) {
         await saveCredentials();
       }
 
@@ -102,8 +102,8 @@ export function ApiKeyForm() {
       if (!response.ok) {
         throw new Error(t("Failed to clear stored credentials."));
       }
-      setUsername("");
-      setPassword("");
+      setAccessKey("");
+      setApiSecretKey("");
       await refresh();
       setSuccess("Stored credentials were cleared.");
     } catch (err) {
@@ -118,29 +118,29 @@ export function ApiKeyForm() {
       <CardHeader>
         <CardTitle>{t("Hitem3D API")}</CardTitle>
         <CardDescription>
-          {t("Enter your Hitem3D username and password, then save securely.")}
+          {t("Enter your Hitem3D Access Key and Secret Key, then save securely.")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="hitem3d-username">{t("Username")}</Label>
+          <Label htmlFor="hitem3d-access-key">{t("Access Key")}</Label>
           <Input
-            id="hitem3d-username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="your-username"
+            id="hitem3d-access-key"
+            value={accessKey}
+            onChange={(e) => setAccessKey(e.target.value)}
+            placeholder="your-access-key"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="hitem3d-password">{t("Password")}</Label>
+          <Label htmlFor="hitem3d-api-key">{t("Secret Key")}</Label>
           <div className="flex gap-2">
             <Input
-              id="hitem3d-password"
+              id="hitem3d-api-key"
               type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="your-password"
+              value={apiSecretKey}
+              onChange={(e) => setApiSecretKey(e.target.value)}
+              placeholder="your-secret-key"
             />
             <Button
               type="button"
@@ -158,7 +158,7 @@ export function ApiKeyForm() {
           <Button
             onClick={handleSave}
             variant="outline"
-            disabled={!username || !password || saving || checking || clearing}
+            disabled={!accessKey || !apiSecretKey || saving || checking || clearing}
           >
             {saving ? t("Saving...") : t("Save Credentials")}
           </Button>

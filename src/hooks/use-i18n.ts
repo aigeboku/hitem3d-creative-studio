@@ -55,6 +55,7 @@ const JA_TRANSLATIONS: Record<string, string> = {
   "Reference Images": "参照画像",
   Original: "元画像",
   "Generating images...": "画像を生成中...",
+  "Cancel Generation": "生成を中止",
   "Back to Screenshots": "スクリーンショットに戻る",
   "Start Over": "最初からやり直す",
   Preset: "プリセット",
@@ -72,9 +73,16 @@ const JA_TRANSLATIONS: Record<string, string> = {
   Previous: "前へ",
   Next: "次へ",
   "Hitem3D API": "Hitem3D API",
+  "Enter your Hitem3D Access Key and Secret Key, then save securely.":
+    "Hitem3Dのアクセスキーとシークレットキーを入力し、安全に保存します。",
+  "Enter your Hitem3D Access Key and API Key, then save securely.":
+    "Hitem3DのアクセスキーとAPIキーを入力し、安全に保存します。",
   "Enter your Hitem3D username and password, then save securely.":
     "Hitem3Dのユーザー名とパスワードを入力し、安全に保存します。",
+  "Access Key": "アクセスキー",
   Username: "ユーザー名",
+  "Secret Key": "シークレットキー",
+  "API Secret Key": "APIシークレットキー",
   Password: "パスワード",
   Hide: "非表示",
   Show: "表示",
@@ -96,6 +104,10 @@ const JA_TRANSLATIONS: Record<string, string> = {
     "このブラウザにGemini APIキーが保存されています。",
   "API key is valid.": "APIキーは有効です。",
   "Setup Guide": "セットアップガイド",
+  "1) Create a HitEM3D account and copy your Access Key / Secret Key.":
+    "1) HitEM3Dアカウントを作成し、アクセスキー / シークレットキーを控えてください。",
+  "1) Create a HitEM3D account and copy your Access Key / API Key.":
+    "1) HitEM3Dアカウントを作成し、アクセスキー / APIキーを控えてください。",
   "1) Create a HitEM3D account and copy your username/password.":
     "1) HitEM3Dアカウントを作成し、ユーザー名/パスワードを控えてください。",
   "2) Create a Gemini API key from": "2) Gemini APIキーを",
@@ -180,6 +192,10 @@ const JA_TRANSLATIONS: Record<string, string> = {
   "Generation cancelled.": "生成はキャンセルされました。",
   "Image generation request timed out.":
     "画像生成リクエストがタイムアウトしました。",
+  "Image generation is taking too long. Please try fewer prompts.":
+    "画像生成に時間がかかりすぎています。プロンプト数を減らして再試行してください。",
+  "Gemini request timed out. Please try again.":
+    "Geminiの応答がタイムアウトしました。再試行してください。",
   "Failed to generate image.": "画像生成に失敗しました。",
   "No image in response.": "レスポンスに画像がありません。",
   "Hitem3D credentials are not configured. Please register them in Settings.":
@@ -188,6 +204,12 @@ const JA_TRANSLATIONS: Record<string, string> = {
     "Gemini APIキーが未設定です。設定画面で登録してください。",
   "Authentication failed. Please check your credentials.":
     "認証に失敗しました。認証情報を確認してください。",
+  "Access Key and Secret Key are required.":
+    "アクセスキーとシークレットキーは必須です。",
+  "Access Key and API Key are required.":
+    "アクセスキーとAPIキーは必須です。",
+  "Unable to reach Hitem3D. Please check API endpoint and try again.":
+    "Hitem3Dに接続できません。APIエンドポイントを確認して再試行してください。",
   "Unable to reach Hitem3D. Please try again.":
     "Hitem3Dに接続できません。再試行してください。",
   "Failed to fetch balance from Hitem3D.":

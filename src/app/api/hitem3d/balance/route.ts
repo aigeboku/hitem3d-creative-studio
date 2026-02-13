@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { HITEM3D_BASE_URL } from "@/lib/server/config";
-import { resolveHitem3dToken } from "@/lib/server/hitem3d";
+import {
+  extractApiMessage,
+  isSuccessCode,
+  resolveHitem3dToken,
+} from "@/lib/server/hitem3d";
 import { fetchWithTimeout, readJsonSafely } from "@/lib/server/http";
 import { setHitem3dToken } from "@/lib/server/secure-cookies";
 import { enforceRateLimit } from "@/lib/server/security";
@@ -32,12 +36,13 @@ export async function GET(request: NextRequest) {
     );
 
     const payload = await readJsonSafely(upstreamResponse);
-    const balance = extractNumber(payload, "balance");
-    const used = extractNumber(payload, "used");
+    const balance = extractNumber(payload, ["totalBalance", "balance"]);
+    const used = extractNumber(payload, ["usedBalance", "used"]) ?? 0;
+    const upstreamMessage = extractApiMessage(payload);
 
-    if (!upstreamResponse.ok || balance === null || used === null) {
+    if (!upstreamResponse.ok || !isSuccessCode(payload) || balance === null) {
       return NextResponse.json(
-        { error: "Failed to fetch balance from Hitem3D." },
+        { error: upstreamMessage || "Failed to fetch balance from Hitem3D." },
         { status: upstreamResponse.status === 401 ? 401 : 502 }
       );
     }
@@ -56,10 +61,23 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function extractNumber(payload: unknown, key: "balance" | "used"): number | null {
+function extractNumber(payload: unknown, keys: string[]): number | null {
   if (!payload || typeof payload !== "object") return null;
   const data = (payload as { data?: unknown }).data;
   if (!data || typeof data !== "object") return null;
-  const value = (data as Record<string, unknown>)[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+
+  for (const key of keys) {
+    const value = (data as Record<string, unknown>)[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string" && value.trim().length > 0) {
+      const numeric = Number(value);
+      if (Number.isFinite(numeric)) {
+        return numeric;
+      }
+    }
+  }
+
+  return null;
 }
